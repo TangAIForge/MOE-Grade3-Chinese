@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=yes">
+<title>秋天的雨 · 课堂互动工具</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:linear-gradient(135deg,#fef9e7,#e8f5e9);color:#1f2937;min-height:100vh;padding:12px}
+.wrap{max-width:1100px;margin:0 auto}
+header{text-align:center;padding:10px 0 16px}
+header h1{font-size:26px;color:#2d6a4f}
+header p{font-size:13px;color:#6b7280;margin-top:4px}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:16px}
+.tab{padding:9px 18px;border:none;border-radius:22px;background:#fff;color:#40916c;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.tab.on{background:#40916c;color:#fff}
+.panel{display:none;background:#fff;border-radius:16px;padding:18px;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.panel.on{display:block}
+h2{font-size:18px;color:#2d6a4f;margin-bottom:12px;text-align:center}
+button.act{padding:10px 22px;border:none;border-radius:10px;background:#52b788;color:#fff;font-size:16px;font-weight:bold;cursor:pointer}
+button.act:hover{background:#40916c}
+button.alt{background:#f4a261}
+button.alt:hover{background:#e08e3c}
+button.gray{background:#9ca3af}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:12px 0}
+/* 签到墙 */
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px;margin-top:10px}
+.seat{padding:10px 4px;border-radius:10px;background:#f1f5f9;text-align:center;cursor:pointer;font-size:14px;font-weight:bold;border:2px solid transparent;transition:.2s}
+.seat.ok{background:#b7e4c7;border-color:#40916c;color:#1b4332}
+.seat.late{background:#ffe8a3;border-color:#f4a261}
+.seat.leave{background:#fecaca;border-color:#dc2626}
+.stat{text-align:center;font-size:15px;margin:8px 0;color:#374151}
+.stat b{color:#40916c;font-size:20px}
+/* 转盘 */
+.wheelbox{position:relative;width:340px;height:340px;margin:0 auto}
+#wheel{border-radius:50%;box-shadow:0 6px 20px rgba(0,0,0,.15)}
+.pointer{position:absolute;top:6px;left:50%;transform:translateX(-50%);font-size:34px;color:#e63946;z-index:3}
+#result{margin-top:14px;text-align:center;font-size:22px;font-weight:bold;color:#e63946;min-height:32px}
+.names{width:100%;min-height:80px;margin-top:10px;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;resize:vertical}
+/* 点名 */
+#roll{margin:16px 0;text-align:center;font-size:44px;font-weight:bold;color:#2d6a4f;min-height:60px;letter-spacing:2px}
+/* 计时器 */
+#clock{font-size:76px;font-weight:bold;text-align:center;font-variant-numeric:tabular-nums;color:#1b4332;margin:10px 0}
+#clock.warn{color:#e63946}
+/* 积分 */
+.teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:10px}
+.team{border:2px solid #b7e4c7;border-radius:12px;padding:12px;text-align:center;background:#f8faf9}
+.team h3{font-size:17px;color:#2d6a4f;margin-bottom:6px}
+.team .score{font-size:38px;font-weight:bold;color:#f4a261;margin:6px 0}
+.team button{padding:6px 14px;margin:0 4px;border:none;border-radius:8px;background:#52b788;color:#fff;font-size:18px;font-weight:bold;cursor:pointer}
+.team button.minus{background:#e07a5f}
+.bar{height:12px;background:#e5e7eb;border-radius:6px;overflow:hidden;margin-top:6px}
+.bar span{display:block;height:100%;background:linear-gradient(90deg,#74c69d,#f4a261);width:0;transition:.4s}
+.hint{font-size:13px;color:#6b7280;text-align:center;margin-top:8px;line-height:1.7}
+.fullbtn{position:fixed;right:12px;bottom:12px;padding:10px 16px;border:none;border-radius:20px;background:#2d6a4f;color:#fff;font-size:14px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>🌳 秋天的雨 · 课堂互动工具</h1>
+  <p>统编版三年级上册 第6课 ｜ 签到 · 抽奖 · 点名 · 计时 · 积分　（数据自动保存在本机）</p>
+</header>
+
+<div class="tabs">
+  <button class="tab on" data-p="p1">📋 签到墙</button>
+  <button class="tab" data-p="p2">🎡 幸运抽奖</button>
+  <button class="tab" data-p="p3">🎯 随机点名</button>
+  <button class="tab" data-p="p4">⏱ 计时器</button>
+  <button class="tab" data-p="p5">⭐ 小组积分榜</button>
+</div>
+
+<!-- 签到墙 -->
+<div class="panel on" id="p1">
+  <h2>上课啦 · 点名签到</h2>
+  <div class="stat">已到 <b id="cntOk">0</b> 人 ｜ 迟到 <b id="cntLate">0</b> 人 ｜ 请假 <b id="cntLeave">0</b> 人 ｜ 共 <b id="cntAll">0</b> 人</div>
+  <div class="row">
+    <button class="act" onclick="setAll('ok')">全部到齐</button>
+    <button class="act alt" onclick="setMode('late')">标记迟到</button>
+    <button class="act gray" onclick="setMode('leave')">标记请假</button>
+    <button class="act gray" onclick="resetSeat()">清空重置</button>
+  </div>
+  <div id="grid"></div>
+  <div class="hint">点一下名字＝答「到」；先点上方「标记迟到／请假」再点名字，可切换状态。<br>名单可自行修改（每行一个名字），修改后自动保存。</div>
+  <textarea class="names" id="nameList" placeholder="每行一个学生姓名"></textarea>
+  <div class="row"><button class="act" onclick="saveNames()">保存名单并重建</button></div>
+</div>
+
+<!-- 抽奖 -->
+<div class="panel" id="p2">
+  <h2>🎡 幸运大转盘 · 抽到谁谁朗读</h2>
+  <div class="wheelbox">
+    <div class="pointer">▼</div>
+    <canvas id="wheel" width="340" height="340"></canvas>
+  </div>
+  <div class="row"><button class="act" onclick="spin()">开始转动</button><button class="act gray" onclick="drawWheel()">重置转盘</button></div>
+  <div id="result">准备好了吗？点击「开始转动」</div>
+  <textarea class="names" id="wheelItems" placeholder="每行一个选项（可填学生姓名、朗读任务、奖励等）"></textarea>
+  <div class="row"><button class="act" onclick="saveWheel()">保存转盘内容</button></div>
+  <div class="hint">默认内置四组朗读任务，也可以换成学生姓名或奖品，用来抽奖。</div>
+</div>
+
+<!-- 随机点名 -->
+<div class="panel" id="p3">
+  <h2>🎯 随机点名 · 人人有机会</h2>
+  <div id="roll">准备</div>
+  <div class="row">
+    <button class="act" id="rollBtn" onclick="toggleRoll()">开始滚动</button>
+    <button class="act gray" onclick="resetScore()">重置本页计数</button>
+  </div>
+  <div class="hint">名字来源与签到墙一致。可设定「不重复点名」，让每个同学都有机会。</div>
+  <div class="row"><button class="act alt" onclick="noRepeat=!noRepeat;alert('不重复点名：'+(noRepeat?'已开启':'已关闭'))">切换「不重复」模式</button></div>
+</div>
+
+<!-- 计时器 -->
+<div class="panel" id="p4">
+  <h2>⏱ 课堂计时器</h2>
+  <div id="clock">05:00</div>
+  <div class="row">
+    <button class="act" onclick="setTimer(60*1)">1 分钟</button>
+    <button class="act" onclick="setTimer(60*3)">3 分钟</button>
+    <button class="act" onclick="setTimer(60*5)">5 分钟</button>
+    <button class="act" onclick="setTimer(60*10)">10 分钟</button>
+  </div>
+  <div class="row">
+    <button class="act" id="tBtn" onclick="toggleTimer()">开始</button>
+    <button class="act gray" onclick="setTimer(lastSet)">重置</button>
+  </div>
+  <div class="hint">用于朗读、练笔、小组讨论计时，最后 10 秒变红并有提示音。</div>
+</div>
+
+<!-- 积分榜 -->
+<div class="panel" id="p5">
+  <h2>⭐ 小组星光积分榜</h2>
+  <div class="teams" id="teams"></div>
+  <div class="row">
+    <button class="act gray" onclick="resetAll()">全部归零</button>
+    <button class="act alt" onclick="announce()">揭晓今日星光小组</button>
+  </div>
+  <div class="hint">积分规则：答到 +1★｜朗读正确流利 +2★｜说清「新鲜感」+3★｜仿写一句 +2★｜书写姿势端正 +1★</div>
+  <div id="champ" style="text-align:center;font-size:20px;font-weight:bold;color:#e63946;margin-top:10px"></div>
+</div>
+</div>
+
+<button class="fullbtn" onclick="toggleFull()">⛶ 全屏</button>
+
+<script>
+/* ---------- 数据 ---------- */
+const K='zengcheng_dqn_';
+function load(k,d){try{const v=localStorage.getItem(K+k);return v?JSON.parse(v):d}catch(e){return d}}
+function save(k,v){try{localStorage.setItem(K+k,JSON.stringify(v))}catch(e){}}
+
+let names=load('names',Array.from({length:40},(_,i)=>'同学'+(i+1)));
+let seat=load('seat',{});
+let mode='ok';
+let noRepeat=load('noRepeat',true);
+let called=load('called',[]);
+let teams=load('teams',[{n:'第 ① 组',s:0},{n:'第 ② 组',s:0},{n:'第 ③ 组',s:0},{n:'第 ④ 组',s:0}]);
+let wheelItems=load('wheel',['第 ① 组：朗读第 1 段','第 ② 组：朗读第 2、3 段','第 ③ 组：朗读第 4 段','第 ④ 组：朗读第 5 段','加 1 颗★','免写一次抄写']);
+
+/* ---------- 标签页 ---------- */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on');document.getElementById(t.dataset.p).classList.add('on');
+});
+
+/* ---------- 签到墙 ---------- */
+function buildSeat(){
+  const g=document.getElementById('grid');g.innerHTML='';
+  names.forEach((n,i)=>{
+    const d=document.createElement('div');
+    d.className='seat '+(seat[i]||'');
+    d.textContent=n;
+    d.onclick=()=>{
+      if(seat[i]===mode){delete seat[i]}else{seat[i]=mode}
+      save('seat',seat);buildSeat();count();
+    };
+    g.appendChild(d);
+  });
+  document.getElementById('nameList').value=names.join('\n');
+  count();
+}
+function count(){
+  let ok=0,late=0,leave=0;
+  names.forEach((_,i)=>{if(seat[i]==='ok')ok++;if(seat[i]==='late')late++;if(seat[i]==='leave')leave++});
+  cntOk.textContent=ok;cntLate.textContent=late;cntLeave.textContent=leave;cntAll.textContent=names.length;
+}
+function setMode(m){mode=m;alert(m==='ok'?'已切回「答到」模式':(m==='late'?'点击名字＝标记迟到':'点击名字＝标记请假'))}
+function setAll(m){names.forEach((_,i)=>seat[i]=m);save('seat',seat);buildSeat()}
+function resetSeat(){seat={};save('seat',seat);buildSeat()}
+function saveNames(){
+  const v=document.getElementById('nameList').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(v.length){names=v;save('names',names);seat={};save('seat',seat);buildSeat();alert('名单已更新，共 '+names.length+' 人')}
+}
+
+/* ---------- 转盘 ---------- */
+const cv=document.getElementById('wheel'),ctx=cv.getContext('2d');
+let angle=0,spinning=false;
+const colors=['#74c69d','#f4a261','#a8dadc','#f6bd60','#b7e4c7','#f1a7a7','#c7ceea','#ffd6a5'];
+function drawWheel(){
+  const n=wheelItems.length,R=170;angle=0;
+  ctx.clearRect(0,0,340,340);
+  const step=2*Math.PI/n;
+  for(let i=0;i<n;i++){
+    ctx.beginPath();ctx.moveTo(170,170);
+    ctx.arc(170,170,R,i*step,(i+1)*step);ctx.closePath();
+    ctx.fillStyle=colors[i%colors.length];ctx.fill();
+    ctx.save();ctx.translate(170,170);ctx.rotate(i*step+step/2);
+    ctx.fillStyle='#1b4332';ctx.font='bold 13px "Microsoft YaHei"';ctx.textAlign='right';
+    const t=wheelItems[i];ctx.fillText(t.length>12?t.slice(0,12)+'…':t,158,5);ctx.restore();
+  }
+  ctx.beginPath();ctx.arc(170,170,34,0,7);ctx.fillStyle='#fff';ctx.fill();
+  ctx.fillStyle='#2d6a4f';ctx.font='bold 17px "Microsoft YaHei"';ctx.textAlign='center';
+  ctx.fillText('GO',170,176);
+  document.getElementById('result').textContent='准备好了吗？点击「开始转动」';
+}
+function render(){
+  ctx.save();ctx.translate(170,170);ctx.rotate(angle);ctx.translate(-170,-170);
+  drawWheelOnly();ctx.restore();
+  ctx.beginPath();ctx.arc(170,170,34,0,7);ctx.fillStyle='#fff';ctx.fill();
+  ctx.fillStyle='#2d6a4f';ctx.font='bold 17px "Microsoft YaHei"';ctx.textAlign='center';
+  ctx.fillText('GO',170,176);
+}
+function winnerIdx(){
+  const n=wheelItems.length,step=2*Math.PI/n,target=3*Math.PI/2;
+  let best=0,bd=9;
+  for(let i=0;i<n;i++){
+    let c=(i*step+step/2+angle)%(2*Math.PI);if(c<0)c+=2*Math.PI;
+    let d=Math.abs(c-target);if(d>Math.PI)d=2*Math.PI-d;
+    if(d<bd){bd=d;best=i}
+  }
+  return best;
+}
+function spin(){
+  if(spinning)return;spinning=true;
+  const start=angle;
+  const target=start+(6+Math.random()*3)*2*Math.PI;
+  const t0=performance.now(),dur=3800;
+  document.getElementById('result').textContent='转动中……';
+  function f(t){
+    const p=Math.min(1,(t-t0)/dur);
+    angle=start+(target-start)*(1-Math.pow(1-p,3));
+    render();
+    if(p<1)requestAnimationFrame(f);
+    else{
+      spinning=false;
+      const win=wheelItems[winnerIdx()];
+      document.getElementById('result').textContent='🎉 恭喜：'+win;
+      beep(880,0.4);setTimeout(()=>beep(1100,0.5),280);
+    }
+  }
+  requestAnimationFrame(f);
+}
+function drawWheelOnly(){
+  const n=wheelItems.length,R=170,step=2*Math.PI/n;
+  ctx.clearRect(0,0,340,340);
+  for(let i=0;i<n;i++){
+    ctx.beginPath();ctx.moveTo(170,170);
+    ctx.arc(170,170,R,i*step,(i+1)*step);ctx.closePath();
+    ctx.fillStyle=colors[i%colors.length];ctx.fill();
+    ctx.save();ctx.translate(170,170);ctx.rotate(i*step+step/2);
+    ctx.fillStyle='#1b4332';ctx.font='bold 13px "Microsoft YaHei"';ctx.textAlign='right';
+    const t=wheelItems[i];ctx.fillText(t.length>12?t.slice(0,12)+'…':t,158,5);ctx.restore();
+  }
+}
+function saveWheel(){
+  const v=document.getElementById('wheelItems').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(v.length>=2){wheelItems=v;save('wheel',wheelItems);drawWheel();alert('转盘已更新，共 '+wheelItems.length+' 个选项')}
+  else alert('请至少填写 2 个选项');
+}
+
+/* ---------- 随机点名 ---------- */
+let rolling=false,rollTimer=null;
+function toggleRoll(){
+  const b=document.getElementById('rollBtn'),e=document.getElementById('roll');
+  if(!rolling){
+    let pool=names.map((n,i)=>i).filter(i=>!(noRepeat&&called.includes(i)));
+    if(!pool.length){called=[];save('called',called);pool=names.map((n,i)=>i);}
+    rolling=true;b.textContent='停！';b.classList.remove('act');b.classList.add('alt');
+    rollTimer=setInterval(()=>{e.textContent=names[pool[Math.floor(Math.random()*pool.length)]]},60);
+  }else{
+    clearInterval(rollTimer);rolling=false;b.textContent='开始滚动';b.classList.add('act');b.classList.remove('alt');
+    const pick=e.textContent;const idx=names.indexOf(pick);
+    if(idx>=0&&noRepeat){called.push(idx);save('called',called)}
+    e.textContent='👉 '+pick;
+  }
+}
+function resetScore(){called=[];save('called',called);document.getElementById('roll').textContent='已重置，所有人重新参与'}
+
+/* ---------- 计时器 ---------- */
+let left=300,timer=null,lastSet=300;
+function setTimer(s){clearInterval(timer);timer=null;left=s;lastSet=s;show();document.getElementById('tBtn').textContent='开始';document.getElementById('clock').classList.remove('warn')}
+function show(){
+  const m=String(Math.floor(left/60)).padStart(2,'0'),s=String(left%60).padStart(2,'0');
+  const c=document.getElementById('clock');c.textContent=m+':'+s;
+  c.classList.toggle('warn',left<=10&&left>0);
+}
+function toggleTimer(){
+  const b=document.getElementById('tBtn');
+  if(timer){clearInterval(timer);timer=null;b.textContent='继续'}
+  else{
+    if(left<=0)left=lastSet;
+    b.textContent='暂停';
+    timer=setInterval(()=>{left--;show();
+      if(left<=0){clearInterval(timer);timer=null;b.textContent='开始';beep();document.getElementById('clock').textContent='时间到！'}
+      else if(left<=10)beep(880,0.06);
+    },1000);
+  }
+}
+function beep(f=660,d=0.25){try{const a=new AudioContext(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=f;o.start();g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+d);o.stop(a.currentTime+d)}catch(e){}}
+
+/* ---------- 积分榜 ---------- */
+function buildTeams(){
+  const w=document.getElementById('teams');w.innerHTML='';
+  const max=Math.max(1,...teams.map(t=>t.s));
+  teams.forEach((t,i)=>{
+    const d=document.createElement('div');d.className='team';
+    d.innerHTML='<h3 contenteditable="true" onblur="rename('+i+',this.textContent)">'+t.n+'</h3>'+
+      '<div class="score">'+t.s+' ★</div>'+
+      '<button onclick="add('+i+',1)">+1</button><button onclick="add('+i+',2)">+2</button><button onclick="add('+i+',3)">+3</button><button class="minus" onclick="add('+i+',-1)">-1</button>'+
+      '<div class="bar"><span style="width:'+(t.s/max*100)+'%"></span></div>';
+    w.appendChild(d);
+  });
+  save('teams',teams);
+}
+function add(i,v){teams[i].s=Math.max(0,teams[i].s+v);buildTeams()}
+function rename(i,v){if(v.trim()){teams[i].n=v.trim();save('teams',teams)}}
+function resetAll(){teams.forEach(t=>t.s=0);buildTeams();document.getElementById('champ').textContent=''}
+function announce(){
+  const mx=Math.max(...teams.map(t=>t.s));
+  const win=teams.filter(t=>t.s===mx).map(t=>t.n).join('、');
+  document.getElementById('champ').textContent=mx>0?('🏆 今日星光小组：'+win+'（'+mx+'★）'):'还没有得分哦，继续加油！';
+  beep(880,0.4);setTimeout(()=>beep(1100,0.5),300);
+}
+
+/* ---------- 全屏 ---------- */
+function toggleFull(){if(!document.fullscreenElement){document.documentElement.requestFullscreen()}else{document.exitFullscreen()}}
+
+/* ---------- 初始化 ---------- */
+buildSeat();drawWheel();buildTeams();show();
+document.getElementById('wheelItems').value=wheelItems.join('\n');
+</script>
+</body>
+</html>
